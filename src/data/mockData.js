@@ -8,7 +8,7 @@ import p4 from '../assets/images/Artboard_1_copy_3.jpg';
 const CATEGORIES = [
   {
     name: "Smart Watches",
-    img: "//zerolifestyle.co/cdn/shop/files/smartwatches_2_85x85.webp?v=1758197934"
+    img: "//zerolifestyle.co/cdn/shop/files/smartwatches_2_85x85.webp?v=1758197934",
   },
   {
     name: "New Launch",

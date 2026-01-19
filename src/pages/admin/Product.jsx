@@ -38,12 +38,10 @@ export default function Products() {
         let res;
         let finalProducts = [];
 
-        // CASE 1: Category selected
         if (categoryFilter) {
           res = await API.get(`/categories/products/${categoryFilter}`);
           finalProducts = res.data.products || [];
 
-          // apply search on category products (client-side)
           if (debouncedSearch.trim()) {
             finalProducts = finalProducts.filter((p) =>
               p.name.toLowerCase().includes(debouncedSearch.toLowerCase())
@@ -51,7 +49,6 @@ export default function Products() {
           }
         }
 
-        // CASE 2: No category
         else {
           if (debouncedSearch.trim()) {
             res = await API.get(`/products/search?q=${debouncedSearch}`);
