@@ -31,7 +31,6 @@ const Navbar = () => {
     { name: "Vision 2025", path: "/vision-2025" },
   ];
 
-  // Search functionality
   useEffect(() => {
     if (isSearchOpen && inputRef.current) {
       inputRef.current.focus();
@@ -39,13 +38,11 @@ const Navbar = () => {
   }, [isSearchOpen]);
 
   useEffect(() => {
-    // If query is empty, clear results
     if (!debouncedQuery.trim()) {
       setResults([]);
       setLoading(false);
       return;
     }
-    // Search when debounced query changes
     searchProducts(debouncedQuery);
   }, [debouncedQuery]);
 

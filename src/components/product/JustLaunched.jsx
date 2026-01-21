@@ -82,7 +82,7 @@ const JustLaunched = () => {
         <div className="w-full">
           <Swiper
             spaceBetween={16} 
-            slidesPerView={1.2}
+            slidesPerView={1.5}
             grabCursor={true}
             breakpoints={{
               480: { slidesPerView: 1.5, spaceBetween: 16 },

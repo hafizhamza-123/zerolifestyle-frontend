@@ -164,11 +164,11 @@ const ProductPage = () => {
             {/* PRICE */}
             <div className="flex items-end gap-4 mt-6">
               <span className="text-3xl font-bold">
-                Rs.{product.discountedPrice}
+                Rs.{product.discountedPrice.toLocaleString()}
               </span>
               {product.price && (
                 <span className="text-lg line-through text-gray-400">
-                  Rs.{product.price}
+                  Rs.{product.price.toLocaleString()}
                 </span>
               )}
             </div>

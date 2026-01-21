@@ -78,7 +78,10 @@ const Hero = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
-    }, 5000); 
+    }, 5000);
+
+    // console.count("Slide changed");
+
     return () => clearInterval(interval);
   }, []);
 
