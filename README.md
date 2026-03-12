@@ -5,6 +5,18 @@ Features a public catalogue, authentication & cart, a user checkout flow and a f
 
 ---
 
+## 📸 Snapshots.
+
+<img width="950" height="407" alt="image" src="https://github.com/user-attachments/assets/099f0076-2d19-4b60-9cb3-aa431459fc04" />
+<img width="960" height="414" alt="image" src="https://github.com/user-attachments/assets/befc4c4a-3d2c-466b-bf72-d7bce2a9787d" />
+<img width="704" height="407" alt="image" src="https://github.com/user-attachments/assets/5b2381bc-d0fa-492d-8c4f-7fc10e7095d7" />
+<img width="499" height="410" alt="image" src="https://github.com/user-attachments/assets/ddc6ed7c-3c74-456d-8f20-76fefa890bf0" />
+<img width="950" height="413" alt="image" src="https://github.com/user-attachments/assets/62b23eb8-e1e4-4787-bb62-26684d78f8d0" />
+
+
+---
+
+
 ## 📦 What’s inside
 
 ```
