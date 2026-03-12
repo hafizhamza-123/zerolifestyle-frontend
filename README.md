@@ -12,6 +12,7 @@ Features a public catalogue, authentication & cart, a user checkout flow and a f
 <img width="960" height="411" alt="image" src="https://github.com/user-attachments/assets/a775fb91-d300-413d-be19-c98e4eb4f125" />
 <img width="958" height="411" alt="image" src="https://github.com/user-attachments/assets/46879038-dfeb-467f-98d0-b6584abd7e52" />
 <img width="958" height="407" alt="image" src="https://github.com/user-attachments/assets/341133ea-8466-4eb4-9a03-446bc1818c93" />
+<img width="1244" height="828" alt="localhost_5173_checkout (1)" src="https://github.com/user-attachments/assets/a24bc646-1dfb-41da-96ec-7f0ac887a95d" />
 <img width="950" height="413" alt="image" src="https://github.com/user-attachments/assets/62b23eb8-e1e4-4787-bb62-26684d78f8d0" />
 
 
