@@ -22,4 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-\n# Environment\n.env\n.env.*\n\n# Build outputs\nbuild/\n
+
+# Environment
+.env
