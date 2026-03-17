@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import AnnouncementBar from "../components/AnnouncementBar.jsx";
 import Navbar from "../components/Navbar.jsx";
@@ -11,12 +11,17 @@ import earbudsImage from "../assets/images/best-seller-earbuds.webp";
 import headphonesImage from "../assets/images/Main-banner-Home-page_4.webp";
 
 const CategoryPage = ({ categoryName }) => {
+    const ITEMS_PER_PAGE = 12;
     const { id } = useParams();
     const navigate = useNavigate();
-    const [category, setCategory] = useState(null);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [sortBy, setSortBy] = useState("default");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [inStockOnly, setInStockOnly] = useState(false);
+    const [onSaleOnly, setOnSaleOnly] = useState(false);
+    const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
 
     const fetchCategoryAndProducts = useCallback(async () => {
         try {
@@ -67,10 +72,6 @@ const CategoryPage = ({ categoryName }) => {
             }
 
             if (response.data?.success) {
-                setCategory({
-                    id: categoryId,
-                    name: response.data.category || categoryName || "Category"
-                });
                 setProducts(Array.isArray(response.data.products) ? response.data.products : []);
             } else {
                 setError("Category not found");
@@ -93,6 +94,85 @@ const CategoryPage = ({ categoryName }) => {
             fetchCategoryAndProducts();
         }
     }, [id, categoryName, fetchCategoryAndProducts]);
+
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+
+    const processedProducts = useMemo(() => {
+        let list = products;
+
+        if (normalizedSearch) {
+            list = list.filter((product) =>
+                String(product?.name || "").toLowerCase().includes(normalizedSearch)
+            );
+        }
+
+        if (inStockOnly) {
+            list = list.filter((product) => Number(product?.stockCount || 0) > 0);
+        }
+
+        if (onSaleOnly) {
+            list = list.filter((product) => {
+                const price = Number(product?.price || 0);
+                const discountedPrice = Number(product?.discountedPrice || price);
+                return price > 0 && discountedPrice < price;
+            });
+        }
+
+        if (sortBy === "default") return list;
+
+        const sorted = [...list];
+
+        const getEffectivePrice = (product) =>
+            Number(product?.discountedPrice || product?.price || 0);
+
+        switch (sortBy) {
+            case "price-low":
+                sorted.sort((a, b) => getEffectivePrice(a) - getEffectivePrice(b));
+                break;
+            case "price-high":
+                sorted.sort((a, b) => getEffectivePrice(b) - getEffectivePrice(a));
+                break;
+            case "name-asc":
+                sorted.sort((a, b) =>
+                    String(a?.name || "").localeCompare(String(b?.name || ""))
+                );
+                break;
+            case "name-desc":
+                sorted.sort((a, b) =>
+                    String(b?.name || "").localeCompare(String(a?.name || ""))
+                );
+                break;
+            case "latest":
+                sorted.sort((a, b) => {
+                    const aDate = new Date(a?.createdAt || a?.updatedAt || 0).getTime();
+                    const bDate = new Date(b?.createdAt || b?.updatedAt || 0).getTime();
+                    return bDate - aDate;
+                });
+                break;
+            default:
+                break;
+        }
+
+        return sorted;
+    }, [products, normalizedSearch, inStockOnly, onSaleOnly, sortBy]);
+
+    useEffect(() => {
+        setVisibleCount(ITEMS_PER_PAGE);
+    }, [normalizedSearch, inStockOnly, onSaleOnly, sortBy]);
+
+    const visibleProducts = useMemo(
+        () => processedProducts.slice(0, visibleCount),
+        [processedProducts, visibleCount]
+    );
+
+    const hasMoreProducts = visibleCount < processedProducts.length;
+
+    const resetFilters = () => {
+        setSearchQuery("");
+        setInStockOnly(false);
+        setOnSaleOnly(false);
+        setSortBy("default");
+    };
 
     if (loading) {
         return (
@@ -192,13 +272,105 @@ const CategoryPage = ({ categoryName }) => {
                                 </p>
                             </div>
 
-                            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                                {products.map((product) => (
-                                    <div key={product.id} className="h-full">
-                                        <ProductCard product={product} />
+                            <div className="bg-white border border-gray-200 rounded-2xl p-4 sm:p-5 mb-7">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="md:col-span-2">
+                                        <label
+                                            htmlFor="categorySearch"
+                                            className="text-xs font-semibold tracking-wide text-gray-500 uppercase"
+                                        >
+                                            Search Product
+                                        </label>
+                                        <input
+                                            id="categorySearch"
+                                            type="text"
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            placeholder="Search by product name"
+                                            className="mt-1.5 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label
+                                            htmlFor="categorySort"
+                                            className="text-xs font-semibold tracking-wide text-gray-500 uppercase"
+                                        >
+                                            Sort By
+                                        </label>
+                                        <select
+                                            id="categorySort"
+                                            value={sortBy}
+                                            onChange={(e) => setSortBy(e.target.value)}
+                                            className="mt-1.5 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-black"
+                                        >
+                                            <option value="default">Default</option>
+                                            <option value="latest">Latest</option>
+                                            <option value="price-low">Price: Low to High</option>
+                                            <option value="price-high">Price: High to Low</option>
+                                            <option value="name-asc">Name: A-Z</option>
+                                            <option value="name-desc">Name: Z-A</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                                    <div className="flex flex-wrap items-center gap-5">
+                                        <label className="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                                            <input
+                                                type="checkbox"
+                                                checked={inStockOnly}
+                                                onChange={(e) => setInStockOnly(e.target.checked)}
+                                                className="w-4 h-4 accent-black"
+                                            />
+                                            In Stock Only
+                                        </label>
+                                        <label className="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                                            <input
+                                                type="checkbox"
+                                                checked={onSaleOnly}
+                                                onChange={(e) => setOnSaleOnly(e.target.checked)}
+                                                className="w-4 h-4 accent-black"
+                                            />
+                                            On Sale Only
+                                        </label>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={resetFilters}
+                                        className="px-4 py-2 text-sm rounded-full border border-gray-300 hover:bg-gray-50 transition cursor-pointer"
+                                    >
+                                        Reset
+                                    </button>
+                                </div>
+                            </div>
+
+                            {processedProducts.length === 0 && (
+                                <div className="bg-white border border-gray-200 rounded-2xl py-10 px-5 text-center mb-7">
+                                    <p className="text-gray-800 font-medium">No products match your filters.</p>
+                                    <p className="text-gray-500 text-sm mt-1">Try changing filters or resetting all options.</p>
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 lg:gap-6">
+                                {visibleProducts.map((product) => (
+                                    <div key={product.id} className="h-full min-w-0">
+                                        <ProductCard product={product} fluid />
                                     </div>
                                 ))}
                             </div>
+
+                            {hasMoreProducts && (
+                                <div className="mt-8 flex justify-center">
+                                    <button
+                                        type="button"
+                                        onClick={() => setVisibleCount((prev) => prev + ITEMS_PER_PAGE)}
+                                        className="px-6 py-2.5 rounded-full bg-black text-white text-sm font-medium hover:bg-gray-800 transition cursor-pointer"
+                                    >
+                                        Load More
+                                    </button>
+                                </div>
+                            )}
                         </>
                     )}
                 </div>

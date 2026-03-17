@@ -20,6 +20,7 @@ import Footer from "../components/Footer.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const profileEndpoints = ["/auth/profile", "/profile"];
+const updateProfileEndpoints = ["/auth/update", "/update"];
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("en-PK", {
@@ -42,6 +43,14 @@ export default function Profile() {
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState({ type: "", text: "" });
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+  });
 
   const fetchProfile = async () => {
     setLoading(true);
@@ -57,6 +66,11 @@ export default function Profile() {
         if (res.data?.user) {
           setUser(res.data.user);
           localStorage.setItem("user", JSON.stringify(res.data.user));
+          setForm({
+            name: res.data.user.name || "",
+            email: res.data.user.email || "",
+            password: "",
+          });
         }
 
         setLoading(false);
@@ -78,6 +92,120 @@ export default function Profile() {
   useEffect(() => {
     fetchProfile();
   }, []);
+
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setSaveMessage({ type: "", text: "" });
+  };
+
+  const validateForm = () => {
+    const trimmedName = form.name.trim();
+    const normalizedEmail = form.email.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!trimmedName || trimmedName.length < 3) {
+      return "Name must be at least 3 characters.";
+    }
+
+    if (!normalizedEmail || !emailRegex.test(normalizedEmail)) {
+      return "Please enter a valid email address.";
+    }
+
+    if (form.password && form.password.length < 6) {
+      return "Password must be at least 6 characters.";
+    }
+
+    return "";
+  };
+
+  const handleUpdateProfile = async (event) => {
+    event.preventDefault();
+    setSaveMessage({ type: "", text: "" });
+
+    const validationError = validateForm();
+    if (validationError) {
+      setSaveMessage({ type: "error", text: validationError });
+      return;
+    }
+
+    const payload = {
+      name: form.name.trim(),
+      email: form.email.trim().toLowerCase(),
+    };
+
+    if (form.password.trim()) {
+      payload.password = form.password.trim();
+    }
+
+    const currentUser = profileData?.user;
+    const noNameChange = payload.name === (currentUser?.name || "");
+    const noEmailChange = payload.email === (currentUser?.email || "");
+    const noPasswordChange = !payload.password;
+
+    if (noNameChange && noEmailChange && noPasswordChange) {
+      setSaveMessage({ type: "error", text: "Nothing to update." });
+      return;
+    }
+
+    setSaving(true);
+
+    let lastError = null;
+
+    for (const endpoint of updateProfileEndpoints) {
+      try {
+        let res;
+        try {
+          res = await API.put(endpoint, payload);
+        } catch (putErr) {
+          if (putErr.response?.status !== 404 && putErr.response?.status !== 405) {
+            throw putErr;
+          }
+          res = await API.patch(endpoint, payload);
+        }
+        const updatedUser = res.data?.user;
+
+        if (!updatedUser) {
+          throw new Error("Invalid update response");
+        }
+
+        setProfileData((prev) => ({
+          ...prev,
+          user: updatedUser,
+        }));
+        setUser(updatedUser);
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+
+        setForm((prev) => ({
+          ...prev,
+          name: updatedUser.name || "",
+          email: updatedUser.email || "",
+          password: "",
+        }));
+
+        setEditMode(false);
+        setSaveMessage({
+          type: "success",
+          text: res.data?.message || "Profile updated successfully.",
+        });
+        setSaving(false);
+        return;
+      } catch (err) {
+        lastError = err;
+        if (err.response?.status !== 404) {
+          break;
+        }
+      }
+    }
+
+    setSaveMessage({
+      type: "error",
+      text:
+        lastError?.response?.data?.error ||
+        "Unable to update profile right now.",
+    });
+    setSaving(false);
+  };
 
   const statCards = useMemo(() => {
     const stats = profileData?.profile?.stats;
@@ -205,35 +333,171 @@ export default function Profile() {
 
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <article className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                <h2 className="text-lg font-semibold">Profile Details</h2>
-                <div className="mt-5 space-y-4">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-gray-500">
-                      Full Name
-                    </p>
-                    <p className="font-medium mt-1">{user.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-gray-500">
-                      Email
-                    </p>
-                    <p className="font-medium mt-1">{user.email}</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-gray-500">
-                        Joined
-                      </p>
-                      <p className="font-medium mt-1">{formatDate(user.createdAt)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-gray-500">
-                        Last Updated
-                      </p>
-                      <p className="font-medium mt-1">{formatDate(user.updatedAt)}</p>
-                    </div>
-                  </div>
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-lg font-semibold">Profile Details</h2>
+                  {!editMode ? (
+                    <button
+                      onClick={() => {
+                        setEditMode(true);
+                        setSaveMessage({ type: "", text: "" });
+                        setForm({
+                          name: user.name || "",
+                          email: user.email || "",
+                          password: "",
+                        });
+                      }}
+                      className="px-4 py-2 rounded-full border border-gray-300 text-sm font-medium hover:bg-gray-50 transition cursor-pointer"
+                    >
+                      Edit Profile
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setEditMode(false);
+                        setSaveMessage({ type: "", text: "" });
+                        setForm({
+                          name: user.name || "",
+                          email: user.email || "",
+                          password: "",
+                        });
+                      }}
+                      className="px-4 py-2 rounded-full border border-gray-300 text-sm font-medium hover:bg-gray-50 transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  )}
                 </div>
+
+                {saveMessage.text && (
+                  <div
+                    className={`mt-4 rounded-lg px-4 py-3 text-sm ${
+                      saveMessage.type === "success"
+                        ? "bg-green-50 text-green-700 border border-green-200"
+                        : "bg-red-50 text-red-700 border border-red-200"
+                    }`}
+                  >
+                    {saveMessage.text}
+                  </div>
+                )}
+
+                {!editMode && (
+                  <div className="mt-5 space-y-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-gray-500">
+                        Full Name
+                      </p>
+                      <p className="font-medium mt-1">{user.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-gray-500">
+                        Email
+                      </p>
+                      <p className="font-medium mt-1">{user.email}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-gray-500">
+                          Joined
+                        </p>
+                        <p className="font-medium mt-1">{formatDate(user.createdAt)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-gray-500">
+                          Last Updated
+                        </p>
+                        <p className="font-medium mt-1">{formatDate(user.updatedAt)}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {editMode && (
+                  <form onSubmit={handleUpdateProfile} className="mt-5 space-y-4">
+                    <div>
+                      <label
+                        htmlFor="name"
+                        className="text-xs uppercase tracking-wide text-gray-500"
+                      >
+                        Full Name
+                      </label>
+                      <input
+                        id="name"
+                        name="name"
+                        type="text"
+                        value={form.name}
+                        onChange={handleInputChange}
+                        className="mt-1 w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-black"
+                        placeholder="Enter your name"
+                        minLength={3}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="email"
+                        className="text-xs uppercase tracking-wide text-gray-500"
+                      >
+                        Email
+                      </label>
+                      <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={form.email}
+                        onChange={handleInputChange}
+                        className="mt-1 w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-black"
+                        placeholder="Enter your email"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="password"
+                        className="text-xs uppercase tracking-wide text-gray-500"
+                      >
+                        New Password (optional)
+                      </label>
+                      <input
+                        id="password"
+                        name="password"
+                        type="password"
+                        value={form.password}
+                        onChange={handleInputChange}
+                        className="mt-1 w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-black"
+                        placeholder="Leave blank to keep current password"
+                        minLength={6}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditMode(false);
+                          setSaveMessage({ type: "", text: "" });
+                          setForm({
+                            name: user.name || "",
+                            email: user.email || "",
+                            password: "",
+                          });
+                        }}
+                        className="w-full py-2.5 rounded-full border border-gray-300 font-medium hover:bg-gray-50 transition cursor-pointer"
+                        disabled={saving}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="w-full py-2.5 rounded-full bg-black text-white font-medium hover:bg-gray-800 transition cursor-pointer disabled:opacity-60"
+                        disabled={saving}
+                      >
+                        {saving ? "Saving..." : "Save Changes"}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </article>
 
               <article className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
